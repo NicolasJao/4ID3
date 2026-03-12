@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Feeder Line Circuit Diagram</title>
+<style>
+  body { background: #0f172a; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; font-family: monospace; color: #94a3b8; }
+  h2 { color: #38bdf8; letter-spacing: 2px; margin-bottom: 6px; font-size: 16px; }
+  p { color: #64748b; font-size: 12px; margin-bottom: 20px; }
+  svg { border: 1px solid #1e293b; border-radius: 12px; background: #0f172a; max-width: 98vw; }
+  .series-r { cursor: pointer; }
+  .series-r:hover rect { stroke: #fbbf24 !important; }
+  .info { background: #1e293b; border-radius: 8px; padding: 12px 20px; font-size: 12px; max-width: 700px; margin-top: 16px; line-height: 1.7; }
+  .info span.b { color: #38bdf8; font-weight: bold; }
+  .info span.g { color: #34d399; }
+  .info span.y { color: #fbbf24; }
+</style>
+</head>
+<body>
+<h2>FEEDER LINE — SERIES + SHUNT RESISTOR NETWORK</h2>
+<p>Click any series resistor (Rs) to simulate a line break at that point</p>
+
+<svg id="circuit" width="820" height="300" viewBox="0 0 820 300">
+  <!-- drawn by JS below -->
+</svg>
+
+<div class="info">
+  <span class="b">How it works:</span>
+  Series resistors <span class="b">Rs</span> divide the feeder into sections, creating measurement nodes.
+  Shunt resistors <span class="g">Rsh</span> connect each node to ground — current through them creates a voltage drop you can measure.
+  <span class="y">Nodes past a break show zero current → zero voltage drop</span>, so the last "live" node before zero identifies the fault section.
+</div>
+
+<script>
+const svg = document.getElementById('circuit');
+const NS = 'http://www.w3.org/2000/svg';
+
+const nodeX = [120, 250, 390, 530, 670];
+const lineY = 110;
+const gndY = 230;
+let breakAt = null; // index of series resistor that is broken (0-3)
+
+function el(tag, attrs, text) {
+  const e = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+
+function isActive(nodeIdx) {
+  return breakAt === null || nodeIdx <= breakAt;
+}
+
+function draw() {
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
+
+  // Source box
+  const srcRect = el('rect', { x: 20, y: lineY - 30, width: 60, height: 60, rx: 6, fill: '#1e293b', stroke: '#38bdf8', 'stroke-width': 2 });
+  svg.appendChild(srcRect);
+  svg.appendChild(el('text', { x: 50, y: lineY - 8, 'text-anchor': 'middle', fill: '#38bdf8', 'font-size': 12, 'font-family': 'monospace' }, 'SOURCE'));
+  svg.appendChild(el('text', { x: 50, y: lineY + 10, 'text-anchor': 'middle', fill: '#94a3b8', 'font-size': 11, 'font-family': 'monospace' }, 'Vs'));
+
+  // Line from source to first node
+  svg.appendChild(el('line', { x1: 80, y1: lineY, x2: nodeX[0], y2: lineY, stroke: '#38bdf8', 'stroke-width': 2.5 }));
+
+  // Series resistors
+  for (let i = 0; i < 4; i++) {
+    const x1 = nodeX[i], x2 = nodeX[i + 1];
+    const mx = (x1 + x2) / 2;
+    const broken = breakAt !== null && i >= breakAt;
+    const color = broken ? '#ef4444' : '#38bdf8';
+
+    const g = el('g', { class: 'series-r' });
+
+    // Line before resistor
+    g.appendChild(el('line', { x1, y1: lineY, x2: mx - 22, y2: lineY, stroke: color, 'stroke-width': 2.5 }));
+
+    // Resistor body
+    g.appendChild(el('rect', { x: mx - 22, y: lineY - 14, width: 44, height: 28, rx: 5, fill: '#1e293b', stroke: color, 'stroke-width': 2 }));
+    g.appendChild(el('text', { x: mx, y: lineY + 5, 'text-anchor': 'middle', fill: color, 'font-size': 12, 'font-family': 'monospace' }, broken ? '✕ BREAK' : 'Rs'));
+
+    // Line after resistor
+    const lineAfter = el('line', { x1: mx + 22, y1: lineY, x2: x2, y2: lineY, stroke: color, 'stroke-width': 2.5 });
+    if (broken) lineAfter.setAttribute('stroke-dasharray', '6,5');
+    g.appendChild(lineAfter);
+
+    // Invisible click target
+    const hit = el('rect', { x: mx - 30, y: lineY - 22, width: 60, height: 44, fill: 'transparent' });
+    hit.addEventListener('click', () => { breakAt = (breakAt === i) ? null : i; draw(); });
+    g.appendChild(hit);
+
+    svg.appendChild(g);
+
+    // Current arrow between nodes (only if active)
+    if (!broken && (breakAt === null || i < breakAt)) {
+      svg.appendChild(el('text', { x: mx + 34, y: lineY - 16, fill: '#fbbf24', 'font-size': 16, 'font-family': 'monospace', opacity: 0.8 }, '→'));
+    }
+  }
+
+  // End of line terminator
+  const endColor = isActive(4) ? '#38bdf8' : '#ef4444';
+  svg.appendChild(el('line', { x1: nodeX[4], y1: lineY, x2: nodeX[4] + 28, y2: lineY, stroke: endColor, 'stroke-width': 2.5, 'stroke-dasharray': isActive(4) ? 'none' : '6,5' }));
+  svg.appendChild(el('text', { x: nodeX[4] + 34, y: lineY + 6, fill: endColor, 'font-size': 18 }, '⊣'));
+
+  // Ground bus (dashed)
+  svg.appendChild(el('line', { x1: nodeX[0], y1: gndY + 32, x2: nodeX[4], y2: gndY + 32, stroke: '#334155', 'stroke-width': 1.5, 'stroke-dasharray': '5,4' }));
+  svg.appendChild(el('text', { x: nodeX[0] - 8, y: gndY + 36, fill: '#475569', 'font-size': 10, 'font-family': 'monospace' }, 'GND BUS'));
+
+  // Shunt resistors + nodes
+  for (let i = 0; i < nodeX.length; i++) {
+    const x = nodeX[i];
+    const active = isActive(i);
+    const color = active ? '#34d399' : '#475569';
+    const midY = (lineY + gndY) / 2;
+
+    // Node dot
+    svg.appendChild(el('circle', { cx: x, cy: lineY, r: 7, fill: active ? '#34d399' : '#334155', stroke: active ? '#6ee7b7' : '#475569', 'stroke-width': 1.5 }));
+
+    // Voltage label
+    svg.appendChild(el('text', { x, y: lineY - 18, 'text-anchor': 'middle', fill: active ? '#fbbf24' : '#64748b', 'font-size': 11, 'font-family': 'monospace' }, `V${i + 1}`));
+
+    // Voltage value
+    svg.appendChild(el('text', { x, y: lineY - 6, 'text-anchor': 'middle', fill: active ? '#fbbf24' : '#475569', 'font-size': 9, 'font-family': 'monospace' }, active ? '●' : '0V'));
+
+    // Shunt line top
+    svg.appendChild(el('line', { x1: x, y1: lineY + 7, x2: x, y2: midY - 16, stroke: color, 'stroke-width': 2 }));
+
+    // Shunt resistor body
+    svg.appendChild(el('rect', { x: x - 15, y: midY - 16, width: 30, height: 32, rx: 4, fill: '#1e293b', stroke: color, 'stroke-width': 2 }));
+    svg.appendChild(el('text', { x, y: midY + 2, 'text-anchor': 'middle', fill: color, 'font-size': 10, 'font-family': 'monospace' }, 'Rsh'));
+    svg.appendChild(el('text', { x, y: midY + 13, 'text-anchor': 'middle', fill: active ? '#fbbf24' : '#475569', 'font-size': 9, 'font-family': 'monospace' }, active ? 'I↓' : '0A'));
+
+    // Shunt line bottom
+    svg.appendChild(el('line', { x1: x, y1: midY + 16, x2: x, y2: gndY, stroke: color, 'stroke-width': 2 }));
+
+    // Ground symbol
+    svg.appendChild(el('line', { x1: x - 14, y1: gndY, x2: x + 14, y2: gndY, stroke: color, 'stroke-width': 2.5 }));
+    svg.appendChild(el('line', { x1: x - 9, y1: gndY + 7, x2: x + 9, y2: gndY + 7, stroke: color, 'stroke-width': 2 }));
+    svg.appendChild(el('line', { x1: x - 4, y1: gndY + 14, x2: x + 4, y2: gndY + 14, stroke: color, 'stroke-width': 1.5 }));
+  }
+
+  // Status message
+  const msg = breakAt !== null
+    ? `⚡ Break detected between Node ${breakAt + 1} and Node ${breakAt + 2} — Nodes ${breakAt + 2} to ${nodeX.length} show 0A`
+    : '✓ All sections healthy — current flowing through all shunt resistors';
+  const msgColor = breakAt !== null ? '#ef4444' : '#34d399';
+  svg.appendChild(el('text', { x: 410, y: 285, 'text-anchor': 'middle', fill: msgColor, 'font-size': 12, 'font-family': 'monospace' }, msg));
+}
+
+draw();
+</script>
+</body>
+</html>
