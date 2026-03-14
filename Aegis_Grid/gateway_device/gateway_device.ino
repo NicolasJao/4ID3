@@ -10,7 +10,7 @@ void setup()
   Serial.begin(9600);
   WiFi.begin(ssid, pass);
   Serial.println("connected");
-  client.setServer(mqtt_server, 1883);//connecting to mqtt server
+  client.setServer(mqtt_server, 1883); //connecting to mqtt server
 
   Wire.begin();
   
