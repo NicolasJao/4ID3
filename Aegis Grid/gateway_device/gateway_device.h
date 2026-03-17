@@ -33,9 +33,9 @@ const char* gateway_device_name = "GatewayDevice";
 const char* field_device_name = "FieldDevice";
 
 //WiFi login credentials
-const char* ssid = "ENTER WIFI NAME HERE";
-const char* pass = "ENTER WIFI PASSWORD";
-const char* mqtt_server = "172.17.42.193"; //mqtt server
+const char* ssid = "Nico's iPhone";
+const char* pass = "yeet12345";
+const char* mqtt_server = "172.20.10.7"; //mqtt server
 
 WiFiClient espClient;
 PubSubClient client(espClient);

@@ -29,7 +29,6 @@ void setup()
   mcp.init();
   mcp.portMode(MCP23017Port::A, 0); // Configuring port A as OUTPUT
   mcp.writeRegister(MCP23017Register::GPIO_A, 0x00);  //Resetting port A 
-
 }
 
 void callback(char* topic, byte* payload, unsigned int length) {   
@@ -49,7 +48,6 @@ void callback(char* topic, byte* payload, unsigned int length) {
 
 void loop()
 {
-  // put your main code here, to run repeatedly:
   if (!client.connected())
   {
       Serial.println("Reconnecting to MQTT broker");
@@ -74,9 +72,10 @@ void loop()
     StaticJsonDocument<sizeof(incoming_data) + 200> json_document;
     DeserializationError error = deserializeJson(json_document, incoming_data.c_str());
     const char* field_device_temp = json_document[group_name][field_device_name]["Temp"];
-    const char* field_device_lum = json_document[group_name][field_device_name]["Luminosity"];
+    const char* field_device_humidity = json_document[group_name][field_device_name]["Humidity"];
+    const char* field_device_vibration = json_document[group_name][field_device_name]["Vibration"];
     client.publish(String(String(group_name) + "/" + String(field_device_name) + "/Temp").c_str(), field_device_temp);
-    client.publish(String(String(group_name) + "/" + String(field_device_name) + "/Luminosity").c_str(), field_device_lum);
- }
-
+    client.publish(String(String(group_name) + "/" + String(field_device_name) + "/Humidity").c_str(), field_device_humidity);
+    client.publish(String(String(group_name) + "/" + String(field_device_name) + "/Vibration").c_str(), field_device_vibration);
+  }
 }
