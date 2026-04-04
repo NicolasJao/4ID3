@@ -1,4 +1,5 @@
-4ID3 L01
+IoT Devices & Networks
+SMRTTECH 4ID3 - L01
 
 Includes folders for several labs where we learned how to use different access technologies / wireless communication protocols for IoT networks.
 
